@@ -9,8 +9,11 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -101,6 +104,10 @@ public class HomeActivity extends BaseActivity {
             mHandler.postDelayed(this, 1000);
         }
     };
+    private static Resources res;
+    public static Resources getRes() {
+        return res;
+    }
 
     @Override
     protected void onCreate(@Nullable @org.jetbrains.annotations.Nullable Bundle savedInstanceState) {
@@ -140,6 +147,9 @@ public class HomeActivity extends BaseActivity {
 
     @Override
     protected void init() {
+        // takagen99: Added to allow read string
+        res = getResources();
+
         EventBus.getDefault().register(this);
         ControlManager.get().startServer();
         initView();
@@ -256,7 +266,15 @@ public class HomeActivity extends BaseActivity {
 
         tvSetting.clearFocus();
         tvSetting.setOnFocusChangeListener(focusChangeListener);
-        tvSetting.setOnClickListener(view -> jumpActivity(SettingActivity.class));
+        tvSetting.setOnClickListener(view -> {
+            FastClickCheckUtil.check(view, 500);
+            jumpActivity(SettingActivity.class);
+        });
+        // Button : Settings >> To go into App Settings ----------------
+        tvSetting.setOnLongClickListener(view -> {
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", getPackageName(), null)));
+            return true;
+        });
         tvName.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -646,6 +664,7 @@ public class HomeActivity extends BaseActivity {
             );
             animatorSet.setDuration(200);
             animatorSet.start();
+            tvSetting.setFocusable(false);
             return;
         }
         if (!hide && topHide == 1) {
@@ -660,7 +679,7 @@ public class HomeActivity extends BaseActivity {
             );
             animatorSet.setDuration(200);
             animatorSet.start();
-            return;
+            tvSetting.setFocusable(true);
         }
     }
 
