@@ -64,7 +64,25 @@ public class App extends MultiDexApplication {
         JSEngine.getInstance().create();
         FileUtils.cleanPlayerCache();
         initXUpdate();
+
+        // davTest();
     }
+
+    // private void davTest () {
+    //     String davUrl = "https://www.bunnyabc.eu.org:15245/dav/";
+    //     String uname = "tvbox_dav";
+    //     String password = "123456";
+    //
+    //     OkHttpSardine client = new OkHttpSardine();
+    //     client.setCredentials(uname, password);
+    //
+    //     try {
+    //         InputStream inputStream = client.get("https://www.bunnyabc.eu.org:15245/dav/test1.txt");
+    //
+    //     } catch (IOException e) {
+    //         throw new RuntimeException(e);
+    //     }
+    // }
 
     private void initXUpdate() {
         XUpdate.get()
@@ -153,12 +171,20 @@ public class App extends MultiDexApplication {
         // 默认加速历史记录
         List<String> proxyUrlHistory = Hawk.get(HawkConfig.PROXY_URL_HISTORY, new ArrayList<>());
         proxyUrlHistory.add(url);
-        proxyUrlHistory.add("https://github.moeyy.xyz/");
-        proxyUrlHistory.add("https://gh.ddlc.top/");
-        proxyUrlHistory.add("https://ghps.cc/");
-        proxyUrlHistory.add("https://raw.bunnylblbblbl.eu.org/");
+        proxyUrlHistory.add("https://ghproxy.net/");
+        proxyUrlHistory.add("https://mirror.ghproxy.com/");
         // 默认仓库地址
         String defaultStoreApi = URL.DEFAULT_STORE_API_URL;
+
+        // 添加默认epg历史记录
+        List<String> epgHistory = Hawk.get(HawkConfig.EPG_HISTORY, new ArrayList<>());
+        epgHistory.add("https://epg.112114.xyz?ch={name}&date={date}");
+        epgHistory.add("https://epg.112114.free.hr?ch={name}&date={date}");
+        epgHistory.add("https://epg.112114.eu.org?ch={name}&date={date}");
+        epgHistory.add("https://diyp.112114.xyz?ch={name}&date={date}");
+        // 默认epg
+        String defaultEpgUrl = "https://epg.112114.free.hr?ch={name}&date={date}";
+
 
         // 不添加默认线路
         // 默认线路地址
@@ -172,11 +198,15 @@ public class App extends MultiDexApplication {
         // putDefault(HawkConfig.API_NAME, defaultApiName);
         // putDefault(HawkConfig.API_NAME_HISTORY, defaultApiHistory);
         // putDefault(HawkConfig.API_MAP, defaultApiMap);
-        // 不添加默认直播源
-        // putDefault(HawkConfig.LIVE_URL, url + URL.DEFAULT_LIVE_URL);
+        // 添加默认直播源
+        putDefault(HawkConfig.LIVE_URL, URL.DEFAULT_LIVE_URL);
 
         putDefault(HawkConfig.DEFAULT_STORE_API, defaultStoreApi);
         putDefault(HawkConfig.PROXY_URL_HISTORY, proxyUrlHistory);
+        putDefault(HawkConfig.EPG_URL, defaultEpgUrl);
+        putDefault(HawkConfig.EPG_HISTORY, epgHistory);
+        putDefault(HawkConfig.LIVE_SHOW_NET_SPEED, true);
+        putDefault(HawkConfig.IS_GLOBAL_SCALE, true);
     }
 
     private void putDefault(String key, Object value) {
@@ -219,5 +249,13 @@ public class App extends MultiDexApplication {
 
     public Activity getCurrentActivity() {
         return AppManager.getInstance().currentActivity();
+    }
+
+    private static String dashData;
+    public void setDashData(String data) {
+        dashData = data;
+    }
+    public String getDashData() {
+        return dashData;
     }
 }

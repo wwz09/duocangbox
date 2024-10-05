@@ -1,5 +1,6 @@
 package com.github.tvbox.osc.bbox.api;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.net.Uri;
 import android.text.TextUtils;
@@ -11,6 +12,8 @@ import com.github.tvbox.osc.bbox.base.App;
 import com.github.tvbox.osc.bbox.bean.*;
 import com.github.tvbox.osc.bbox.server.ControlManager;
 import com.github.tvbox.osc.bbox.util.*;
+import com.github.tvbox.osc.bbox.util.urlhttp.CallBackUtil;
+import com.github.tvbox.osc.bbox.util.urlhttp.UrlHttpUtil;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -20,9 +23,12 @@ import com.lzy.okgo.callback.AbsCallback;
 import com.lzy.okgo.model.Response;
 import com.orhanobut.hawk.Hawk;
 import org.apache.commons.lang3.StringUtils;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.*;
+import java.net.URLEncoder;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,6 +44,7 @@ public class ApiConfig {
     private SourceBean mHomeSource;
     private ParseBean mDefaultParse;
     private List<LiveChannelGroup> liveChannelGroupList;
+    private Map<String, List<Epginfo>> liveChannelEpgInfoList;
     private List<ParseBean> parseBeanList;
     private List<String> vipParseFlags;
     private List<IJKCode> ijkCodes;
@@ -56,6 +63,7 @@ public class ApiConfig {
     private ApiConfig() {
         sourceBeanList = new LinkedHashMap<>();
         liveChannelGroupList = new ArrayList<>();
+        liveChannelEpgInfoList = new HashMap<>();
         parseBeanList = new ArrayList<>();
     }
 
@@ -109,7 +117,58 @@ public class ApiConfig {
     }
 
     public void onlyLoadBaseConfig () {
-        parseJson("", "{ \"spider\": \"\", \"wallpaper\": \"\", \"sites\": [], \"parses\": [ { \"name\": \"聚合\", \"type\": 3, \"url\": \"Demo\" } ], \"doh\": [ { \"name\": \"Google\", \"url\": \"https://dns.google/dns-query\", \"ips\": [ \"8.8.4.4\", \"8.8.8.8\" ] }, { \"name\": \"Cloudflare\", \"url\": \"https://cloudflare-dns.com/dns-query\", \"ips\": [ \"1.1.1.1\", \"1.0.0.1\", \"2606:4700:4700::1111\", \"2606:4700:4700::1001\" ] }, { \"name\": \"AdGuard\", \"url\": \"https://dns.adguard.com/dns-query\", \"ips\": [ \"94.140.14.140\", \"94.140.14.141\" ] }, { \"name\": \"DNSWatch\", \"url\": \"https://resolver2.dns.watch/dns-query\", \"ips\": [ \"84.200.69.80\", \"84.200.70.40\" ] }, { \"name\": \"Quad9\", \"url\": \"https://dns.quad9.net/dns-quer\", \"ips\": [ \"9.9.9.9\", \"149.112.112.112\" ] } ], \"rules\": [ { \"name\": \"hwk\", \"hosts\": [ \"haiwaikan\" ], \"regex\": [ \"10.0099\", \"10.3333\", \"16.0599\", \"8.1748\", \"10.85\" ] }, { \"name\": \"yqk\", \"hosts\": [ \"yqk88\" ], \"regex\": [ \"18.4\", \"15.1666\" ] }, { \"name\": \"sn\", \"hosts\": [ \"suonizy\" ], \"regex\": [ \"15.1666\", \"15.2666\" ] }, { \"name\": \"bf\", \"hosts\": [ \"bfzy\" ], \"regex\": [ \"#EXT-X-DISCONTINUITY\\\\r*\\\\n*#EXTINF:3,[\\\\s\\\\S]*?#EXT-X-DISCONTINUITY\" ] }, { \"name\": \"xx\", \"hosts\": [ \"aws.ulivetv.net\" ], \"regex\": [ \"#EXT-X-DISCONTINUITY\\\\r*\\\\n*#EXTINF:8,[\\\\s\\\\S]*?#EXT-X-DISCONTINUITY\" ] }, { \"name\": \"lz\", \"hosts\": [ \"vip.lz\", \"hd.lz\", \"v.cdnlz1\", \"v.cdnlz\" ], \"regex\": [ \"18.5333\" ] }, { \"name\": \"非凡\", \"hosts\": [ \"vip.ffzy\", \"hd.ffzy\" ], \"regex\": [ \"25.0666\" ] }, { \"name\": \"hs\", \"hosts\": [ \"huoshan.com\" ], \"regex\": [ \"item_id=\" ] }, { \"name\": \"dy\", \"hosts\": [ \"douyin.com\" ], \"regex\": [ \"is_play_url=\" ] }, { \"name\": \"nm\", \"hosts\": [ \"toutiaovod.com\" ], \"regex\": [ \"video/tos/cn\" ] }, { \"name\": \"cl\", \"hosts\": [ \"magnet\" ], \"regex\": [ \"最 新\", \"直 播\", \"更 新\" ] } ], \"lives\": [ { \"name\": \"live\", \"type\": 0, \"url\": \"\", \"playerType\": 1, \"ua\": \"okhttp/3.15\", \"epg\": \"http://epg.112114.xyz/?ch={name}&amp;date={date}\" } ] }");
+        String infoJsonStr = "{ \"spider\": \"\", \"wallpaper\": \"\", \"sites\": [], \"parses\": [ { \"name\": \"聚合\", \"type\": 3, \"url\": \"Demo\" } ], \"doh\": [ { \"name\": \"Google\", \"url\": \"https://dns.google/dns-query\", \"ips\": [ \"8.8.4.4\", \"8.8.8.8\" ] }, { \"name\": \"Cloudflare\", \"url\": \"https://cloudflare-dns.com/dns-query\", \"ips\": [ \"1.1.1.1\", \"1.0.0.1\", \"2606:4700:4700::1111\", \"2606:4700:4700::1001\" ] }, { \"name\": \"AdGuard\", \"url\": \"https://dns.adguard.com/dns-query\", \"ips\": [ \"94.140.14.140\", \"94.140.14.141\" ] }, { \"name\": \"DNSWatch\", \"url\": \"https://resolver2.dns.watch/dns-query\", \"ips\": [ \"84.200.69.80\", \"84.200.70.40\" ] }, { \"name\": \"Quad9\", \"url\": \"https://dns.quad9.net/dns-quer\", \"ips\": [ \"9.9.9.9\", \"149.112.112.112\" ] } ], \"rules\": [ { \"name\": \"hwk\", \"hosts\": [ \"haiwaikan\" ], \"regex\": [ \"10.0099\", \"10.3333\", \"16.0599\", \"8.1748\", \"10.85\" ] }, { \"name\": \"yqk\", \"hosts\": [ \"yqk88\" ], \"regex\": [ \"18.4\", \"15.1666\" ] }, { \"name\": \"sn\", \"hosts\": [ \"suonizy\" ], \"regex\": [ \"15.1666\", \"15.2666\" ] }, { \"name\": \"bf\", \"hosts\": [ \"bfzy\" ], \"regex\": [ \"#EXT-X-DISCONTINUITY\\\\r*\\\\n*#EXTINF:3,[\\\\s\\\\S]*?#EXT-X-DISCONTINUITY\" ] }, { \"name\": \"xx\", \"hosts\": [ \"aws.ulivetv.net\" ], \"regex\": [ \"#EXT-X-DISCONTINUITY\\\\r*\\\\n*#EXTINF:8,[\\\\s\\\\S]*?#EXT-X-DISCONTINUITY\" ] }, { \"name\": \"lz\", \"hosts\": [ \"vip.lz\", \"hd.lz\", \"v.cdnlz1\", \"v.cdnlz\" ], \"regex\": [ \"18.5333\" ] }, { \"name\": \"非凡\", \"hosts\": [ \"vip.ffzy\", \"hd.ffzy\" ], \"regex\": [ \"25.0666\" ] }, { \"name\": \"hs\", \"hosts\": [ \"huoshan.com\" ], \"regex\": [ \"item_id=\" ] }, { \"name\": \"dy\", \"hosts\": [ \"douyin.com\" ], \"regex\": [ \"is_play_url=\" ] }, { \"name\": \"nm\", \"hosts\": [ \"toutiaovod.com\" ], \"regex\": [ \"video/tos/cn\" ] }, { \"name\": \"cl\", \"hosts\": [ \"magnet\" ], \"regex\": [ \"最 新\", \"直 播\", \"更 新\" ] } ], \"lives\": [ { \"name\": \"live\", \"type\": 0, \"url\": \"\", \"playerType\": 1, \"ua\": \"okhttp/3.15\", \"epg\": \"http://epg.112114.xyz/?ch={name}&amp;date={date}\" } ] }";
+        JsonObject infoJson = new Gson().fromJson(infoJsonStr, JsonObject.class);
+        String defaultIJKADS="{\"ijk\":[{\"options\":[{\"name\":\"opensles\",\"category\":4,\"value\":\"0\"},{\"name\":\"framedrop\",\"category\":4,\"value\":\"1\"},{\"name\":\"soundtouch\",\"category\":4,\"value\":\"1\"},{\"name\":\"start-on-prepared\",\"category\":4,\"value\":\"1\"},{\"name\":\"http-detect-rangeupport\",\"category\":1,\"value\":\"0\"},{\"name\":\"fflags\",\"category\":1,\"value\":\"fastseek\"},{\"name\":\"skip_loop_filter\",\"category\":2,\"value\":\"48\"},{\"name\":\"reconnect\",\"category\":4,\"value\":\"1\"},{\"name\":\"enable-accurate-seek\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec-all-videos\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec-auto-rotate\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec-handle-resolution-change\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec-hevc\",\"category\":4,\"value\":\"0\"},{\"name\":\"max-buffer-size\",\"category\":4,\"value\":\"15728640\"}],\"group\":\"软解码\"},{\"options\":[{\"name\":\"opensles\",\"category\":4,\"value\":\"0\"},{\"name\":\"framedrop\",\"category\":4,\"value\":\"1\"},{\"name\":\"soundtouch\",\"category\":4,\"value\":\"1\"},{\"name\":\"start-on-prepared\",\"category\":4,\"value\":\"1\"},{\"name\":\"http-detect-rangeupport\",\"category\":1,\"value\":\"0\"},{\"name\":\"fflags\",\"category\":1,\"value\":\"fastseek\"},{\"name\":\"skip_loop_filter\",\"category\":2,\"value\":\"48\"},{\"name\":\"reconnect\",\"category\":4,\"value\":\"1\"},{\"name\":\"enable-accurate-seek\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec\",\"category\":4,\"value\":\"1\"},{\"name\":\"mediacodec-all-videos\",\"category\":4,\"value\":\"1\"},{\"name\":\"mediacodec-auto-rotate\",\"category\":4,\"value\":\"1\"},{\"name\":\"mediacodec-handle-resolution-change\",\"category\":4,\"value\":\"1\"},{\"name\":\"mediacodec-hevc\",\"category\":4,\"value\":\"1\"},{\"name\":\"max-buffer-size\",\"category\":4,\"value\":\"15728640\"}],\"group\":\"硬解码\"}],\"ads\":[\"mimg.0c1q0l.cn\",\"www.googletagmanager.com\",\"www.google-analytics.com\",\"mc.usihnbcq.cn\",\"mg.g1mm3d.cn\",\"mscs.svaeuzh.cn\",\"cnzz.hhttm.top\",\"tp.vinuxhome.com\",\"cnzz.mmstat.com\",\"www.baihuillq.com\",\"s23.cnzz.com\",\"z3.cnzz.com\",\"c.cnzz.com\",\"stj.v1vo.top\",\"z12.cnzz.com\",\"img.mosflower.cn\",\"tips.gamevvip.com\",\"ehwe.yhdtns.com\",\"xdn.cqqc3.com\",\"www.jixunkyy.cn\",\"sp.chemacid.cn\",\"hm.baidu.com\",\"s9.cnzz.com\",\"z6.cnzz.com\",\"um.cavuc.com\",\"mav.mavuz.com\",\"wofwk.aoidf3.com\",\"z5.cnzz.com\",\"xc.hubeijieshikj.cn\",\"tj.tianwenhu.com\",\"xg.gars57.cn\",\"k.jinxiuzhilv.com\",\"cdn.bootcss.com\",\"ppl.xunzhuo123.com\",\"xomk.jiangjunmh.top\",\"img.xunzhuo123.com\",\"z1.cnzz.com\",\"s13.cnzz.com\",\"xg.huataisangao.cn\",\"z7.cnzz.com\",\"xg.huataisangao.cn\",\"z2.cnzz.com\",\"s96.cnzz.com\",\"q11.cnzz.com\",\"thy.dacedsfa.cn\",\"xg.whsbpw.cn\",\"s19.cnzz.com\",\"z8.cnzz.com\",\"s4.cnzz.com\",\"f5w.as12df.top\",\"ae01.alicdn.com\",\"www.92424.cn\",\"k.wudejia.com\",\"vivovip.mmszxc.top\",\"qiu.xixiqiu.com\",\"cdnjs.hnfenxun.com\",\"cms.qdwght.com\"]}";
+        JsonObject defaultJson=new Gson().fromJson(defaultIJKADS, JsonObject.class);
+        parseLiveChannels("", infoJson);
+        // 广告地址
+        if(AdBlocker.isEmpty()){
+            //默认广告拦截
+            for (JsonElement host : defaultJson.getAsJsonArray("ads")) {
+                AdBlocker.addAdHost(host.getAsString());
+            }
+            //追加的广告拦截
+            if(infoJson.has("ads")){
+                for (JsonElement host : infoJson.getAsJsonArray("ads")) {
+                    if(!AdBlocker.hasHost(host.getAsString())){
+                        AdBlocker.addAdHost(host.getAsString());
+                    }
+                }
+            }
+        }
+        // IJK解码配置
+        if(ijkCodes==null){
+            ijkCodes = new ArrayList<>();
+            boolean foundOldSelect = false;
+            String ijkCodec = Hawk.get(HawkConfig.IJK_CODEC, "");
+            JsonArray ijkJsonArray = infoJson.has("ijk")?infoJson.get("ijk").getAsJsonArray():defaultJson.get("ijk").getAsJsonArray();
+            for (JsonElement opt : ijkJsonArray) {
+                JsonObject obj = (JsonObject) opt;
+                String name = obj.get("group").getAsString();
+                LinkedHashMap<String, String> baseOpt = new LinkedHashMap<>();
+                for (JsonElement cfg : obj.get("options").getAsJsonArray()) {
+                    JsonObject cObj = (JsonObject) cfg;
+                    String key = cObj.get("category").getAsString() + "|" + cObj.get("name").getAsString();
+                    String val = cObj.get("value").getAsString();
+                    baseOpt.put(key, val);
+                }
+                IJKCode codec = new IJKCode();
+                codec.setName(name);
+                codec.setOption(baseOpt);
+                if (name.equals(ijkCodec) || TextUtils.isEmpty(ijkCodec)) {
+                    codec.selected(true);
+                    ijkCodec = name;
+                    foundOldSelect = true;
+                } else {
+                    codec.selected(false);
+                }
+                ijkCodes.add(codec);
+            }
+            if (!foundOldSelect && ijkCodes.size() > 0) {
+                ijkCodes.get(0).selected(true);
+            }
+        }
     }
 
     public void loadConfig(boolean useCache, LoadConfigCallback callback, Activity activity) {
@@ -683,19 +742,24 @@ public class ApiConfig {
             liveChannelGroup.setLiveChannels(new ArrayList<LiveChannelItem>());
             liveChannelGroup.setGroupIndex(groupIndex++);
             String groupName = ((JsonObject) groupElement).get("group").getAsString().trim();
-            String[] splitGroupName = groupName.split("_", 2);
-            liveChannelGroup.setGroupName(splitGroupName[0]);
-            if (splitGroupName.length > 1)
-                liveChannelGroup.setGroupPassword(splitGroupName[1]);
-            else
-                liveChannelGroup.setGroupPassword("");
+            liveChannelGroup.setGroupName(groupName);
+            // String[] splitGroupName = groupName.split("_", 2);
+            // liveChannelGroup.setGroupName(splitGroupName[0]);
+            // if (splitGroupName.length > 1)
+            //     liveChannelGroup.setGroupPassword(splitGroupName[1]);
+            // else
+            //     liveChannelGroup.setGroupPassword("");
+            liveChannelGroup.setGroupPassword("");
             channelIndex = 0;
             for (JsonElement channelElement : ((JsonObject) groupElement).get("channels").getAsJsonArray()) {
                 JsonObject obj = (JsonObject) channelElement;
                 LiveChannelItem liveChannelItem = new LiveChannelItem();
-                liveChannelItem.setChannelName(obj.get("name").getAsString().trim());
+                String channelName = obj.get("name").getAsString().trim();
+                liveChannelItem.setChannelName(channelName);
                 liveChannelItem.setChannelIndex(channelIndex++);
                 liveChannelItem.setChannelNum(++channelNum);
+                LOG.i("liveChannelItem: " + liveChannelItem);
+                setChannelEpgInfo(liveChannelItem);
                 ArrayList<String> urls = DefaultConfig.safeJsonStringList(obj, "urls");
                 ArrayList<String> sourceNames = new ArrayList<>();
                 ArrayList<String> sourceUrls = new ArrayList<>();
@@ -717,12 +781,72 @@ public class ApiConfig {
         }
     }
 
+    private void setChannelEpgInfo(LiveChannelItem liveChannelItem) {
+        Date date = new Date();
+        String stFormat = "%s - %s %s";
+        String channelName = liveChannelItem.getChannelName();
+        if (!liveChannelEpgInfoList.containsKey(channelName))
+            getChannelEpgInfo(channelName, new Date(), new EpgInfoParseCallback() {
+            @Override
+            public void success(String msg) {
+                String channelEpgInfoSt = String.format(stFormat, "00:00", "00:00", "暂无信息");
+                try {
+                    List<Epginfo> epginfos = EpgUtil.getEpgInfoList(msg, date);
+                    if (!epginfos.isEmpty()) {
+                        LOG.i("EPG不为空" + epginfos);
+                        liveChannelEpgInfoList.put(channelName, epginfos);
+                        int size = epginfos.size() - 1;
+                        while (size >= 0) {
+                            Epginfo epginfo = epginfos.get(size);
+                            if (new Date().compareTo(epginfo.startdateTime) >= 0) {
+                                channelEpgInfoSt = String.format(stFormat, epginfo.start, epginfo.end, epginfo.title);
+                                liveChannelItem.setChannelEpgInfo(channelEpgInfoSt);
+                                break;
+                            } else {
+                                size--;
+                            }
+                        }
+                    }
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            @Override
+            public void error(int code, String msg) {
+                liveChannelItem.setChannelEpgInfo(String.format(stFormat, "00:00", "00:00", "暂无信息"));
+                LOG.e("apiconfig EPG为空 " + code + " " + msg);
+            }
+        });
+    }
+
+    public void getChannelEpgInfo(String name, Date date, EpgInfoParseCallback callback) {
+        @SuppressLint("SimpleDateFormat") SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy-MM-dd");
+        timeFormat.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+        String epgUrl = Hawk.get(HawkConfig.EPG_URL,"");
+        String url;
+        if(epgUrl.contains("{name}") && epgUrl.contains("{date}")){
+            url= epgUrl.replace("{name}", URLEncoder.encode(name)).replace("{date}",timeFormat.format(date));
+        }else {
+            url= epgUrl + "?ch="+ URLEncoder.encode(name) + "&date=" + timeFormat.format(date);
+        }
+        UrlHttpUtil.get(url, new CallBackUtil.CallBackString() {
+            public void onFailure(int i, String str) {
+                callback.error(i, str);
+            }
+
+            public void onResponse(String paramString) {
+                callback.success(paramString);
+            }
+        });
+    }
+
     public String getSpider() {
         return spider;
     }
 
     public Spider getCSP(SourceBean sourceBean) {
         boolean js = sourceBean.getApi().endsWith(".js") || sourceBean.getApi().contains(".js?");
+        LOG.d("jsSpider: " + js);
         if (js) return jsLoader.getSpider(sourceBean.getKey(), sourceBean.getApi(), sourceBean.getExt(), sourceBean.getJar());
         return jarLoader.getSpider(sourceBean.getKey(), sourceBean.getApi(), sourceBean.getExt(), sourceBean.getJar());
     }
@@ -751,6 +875,12 @@ public class ApiConfig {
         void success(boolean parse, String url, Map<String, String> header);
 
         void fail(int code, String msg);
+    }
+
+    public interface EpgInfoParseCallback {
+        void success(String msg);
+
+        void error(int code, String msg);
     }
 
     public SourceBean getSource(String key) {
@@ -794,6 +924,10 @@ public class ApiConfig {
 
     public List<LiveChannelGroup> getChannelGroupList() {
         return liveChannelGroupList;
+    }
+
+    public Map<String, List<Epginfo>> getChannelEpgInfoList() {
+        return liveChannelEpgInfoList;
     }
 
     public List<IJKCode> getIjkCodes() {

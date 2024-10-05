@@ -29,7 +29,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.viewpager.widget.ViewPager;
@@ -163,16 +162,13 @@ public class HomeActivity extends BaseActivity {
         initData();
     }
 
-    private View.OnFocusChangeListener focusChangeListener = new View.OnFocusChangeListener() {
-        @Override
-        public void onFocusChange(View v, boolean hasFocus) {
-            if (hasFocus)
-                // v.animate().rotation(180f).setDuration(100).setInterpolator(new BounceInterpolator()).start();
-                v.animate().rotation(60f).setDuration(100).setInterpolator(new LinearInterpolator()).start();
-            else
-                // v.animate().rotation(0f).setDuration(100).setInterpolator(new BounceInterpolator()).start();
-                v.animate().rotation(0f).setDuration(100).setInterpolator(new LinearInterpolator()).start();
-        }
+    private View.OnFocusChangeListener focusChangeListener = (v, hasFocus) -> {
+        if (hasFocus)
+            // v.animate().rotation(180f).setDuration(100).setInterpolator(new BounceInterpolator()).start();
+            v.animate().rotation(60f).setDuration(100).setInterpolator(new LinearInterpolator()).start();
+        else
+            // v.animate().rotation(0f).setDuration(100).setInterpolator(new BounceInterpolator()).start();
+            v.animate().rotation(0f).setDuration(100).setInterpolator(new LinearInterpolator()).start();
     };
 
     private void initView() {
@@ -315,7 +311,6 @@ public class HomeActivity extends BaseActivity {
         vto.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
             @Override
             public boolean onPreDraw() {
-                height = tvSetting.getMeasuredHeight() * 1f;
                 // width = tvSetting.getMeasuredWidth()*1f;
                 if (vto.isAlive()) {
                     vto.removeOnPreDrawListener(this);
@@ -328,17 +323,14 @@ public class HomeActivity extends BaseActivity {
 
     private void initViewModel() {
         sourceViewModel = new ViewModelProvider(this).get(SourceViewModel.class);
-        sourceViewModel.sortResult.observe(this, new Observer<AbsSortXml>() {
-            @Override
-            public void onChanged(AbsSortXml absXml) {
-                showSuccess();
-                if (absXml != null && absXml.classes != null && absXml.classes.sortList != null) {
-                    sortAdapter.setNewData(DefaultConfig.adjustSort(ApiConfig.get().getHomeSourceBean().getKey(), absXml.classes.sortList, true));
-                } else {
-                    sortAdapter.setNewData(DefaultConfig.adjustSort(ApiConfig.get().getHomeSourceBean().getKey(), new ArrayList<>(), true));
-                }
-                initViewPager(absXml);
+        sourceViewModel.sortResult.observe(this, absXml -> {
+            showSuccess();
+            if (absXml != null && absXml.classes != null && absXml.classes.sortList != null) {
+                sortAdapter.setNewData(DefaultConfig.adjustSort(ApiConfig.get().getHomeSourceBean().getKey(), absXml.classes.sortList, true));
+            } else {
+                sortAdapter.setNewData(DefaultConfig.adjustSort(ApiConfig.get().getHomeSourceBean().getKey(), new ArrayList<>(), true));
             }
+            initViewPager(absXml);
         });
     }
 
@@ -349,6 +341,8 @@ public class HomeActivity extends BaseActivity {
         SourceBean home = ApiConfig.get().getHomeSourceBean();
         if (home != null && home.getName() != null && !home.getName().isEmpty())
             tvName.setText(home.getName());
+        // 默认给主页按钮焦点
+        mGridView.requestFocus();
         if (dataInitOk && jarInitOk) {
             showLoading();
             sourceViewModel.getSort(ApiConfig.get().getHomeSourceBean().getKey());
@@ -357,6 +351,9 @@ public class HomeActivity extends BaseActivity {
             } else {
                 LOG.e("无");
             }
+            // 默认进入直播
+            // Intent intent = new Intent(mContext, LivePlayActivity.class);
+            // HomeActivity.this.startActivity(intent);
             return;
         }
         showLoading();
@@ -657,7 +654,7 @@ public class HomeActivity extends BaseActivity {
                             AutoSizeUtils.mm2px(this.mContext, 10.0f),
                             AutoSizeUtils.mm2px(this.mContext, 0.0f)),
                     ObjectAnimator.ofObject(viewObj, "height", new IntEvaluator(),
-                            AutoSizeUtils.mm2px(this.mContext, height),
+                            AutoSizeUtils.mm2px(this.mContext, 70f),
                             // AutoSizeUtils.mm2px(this.mContext, 50.0f),
                             AutoSizeUtils.mm2px(this.mContext, 1.0f)),
                     ObjectAnimator.ofFloat(this.topLayout, "alpha", 1.0f, 0.0f)
@@ -674,7 +671,7 @@ public class HomeActivity extends BaseActivity {
                             AutoSizeUtils.mm2px(this.mContext, 10.0f)),
                     ObjectAnimator.ofObject(viewObj, "height", new IntEvaluator(),
                             AutoSizeUtils.mm2px(this.mContext, 1.0f),
-                            AutoSizeUtils.mm2px(this.mContext, height)),
+                            AutoSizeUtils.mm2px(this.mContext, 70f)),
                     ObjectAnimator.ofFloat(this.topLayout, "alpha", 0.0f, 1.0f)
             );
             animatorSet.setDuration(200);
