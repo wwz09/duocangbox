@@ -53,13 +53,13 @@ public class App extends MultiDexApplication {
         // 初始化数据库
         AppDataManager.init();
         LoadSir.beginBuilder()
-                .addCallback(new EmptyCallback())
-                .addCallback(new LoadingCallback())
-                .commit();
+                。addCallback(new EmptyCallback())
+                。addCallback(new LoadingCallback())
+                。commit();
         AutoSizeConfig.getInstance().setCustomFragment(true).getUnitsManager()
-                .setSupportDP(false)
-                .setSupportSP(false)
-                .setSupportSubunits(Subunits.MM);
+                。setSupportDP(false)
+                。setSupportSP(false)
+                。setSupportSubunits(Subunits.MM);
         PlayerHelper.init();
         JSEngine.getInstance().create();
         FileUtils.cleanPlayerCache();
@@ -173,8 +173,11 @@ public class App extends MultiDexApplication {
         proxyUrlHistory.add(url);
         proxyUrlHistory.add("https://ghproxy.net/");
         proxyUrlHistory.add("https://mirror.ghproxy.com/");
+         // 默认线路地址
+        String defaultApiName = "默认线路";
+        String defaultApi = "https://ghp.ci/https://raw.githubusercontent.com/wwz09/ubuntu/main/main.json";
         // 默认仓库地址
-        String defaultStoreApi = URL.DEFAULT_STORE_API_URL;
+        String defaultStoreApi = "https://ghp.ci/https://raw.githubusercontent.com/wwz09/ubuntu/main/TXT/dc.json";
 
         // 添加默认epg历史记录
         List<String> epgHistory = Hawk.get(HawkConfig.EPG_HISTORY, new ArrayList<>());
